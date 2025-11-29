@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { createStackNavigator } from '@react-navigation/stack'
 import { navigationProps } from './navigationProps/navigationProps'
 import GradientHeader from '../../../components/GradientHeader'
+import { HomeTitleContext } from '../../../contexts/HomeTitleContext'
 
 import Home from '../../../scenes/home/Home'
 
 const Stack = createStackNavigator()
 
 export const HomeStacks = () => {
+  const { title, setTitle } = useContext(HomeTitleContext)
   return (
     <Stack.Navigator
       initialRouteName="Home"
@@ -17,7 +19,7 @@ export const HomeStacks = () => {
         name="Home"
         component={Home}
         options={({ navigation }) => ({
-          title: 'Home',
+          title: `${title}面`,
           headerShown: true,
           headerBackTitleVisible: false,
           headerBackground: () => <GradientHeader />,

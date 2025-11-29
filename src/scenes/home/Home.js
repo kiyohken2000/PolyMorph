@@ -1,42 +1,52 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { StyleSheet, Text, View, PanResponder } from 'react-native'
+import React, { useState, useEffect, useRef, useContext } from 'react'
+import { StyleSheet, Text, View, PanResponder, TouchableOpacity } from 'react-native'
 import { colors, fontSize } from '../../theme'
 import ScreenTemplate from '../../components/ScreenTemplate'
 import { GLView } from 'expo-gl'
 import * as THREE from 'three'
 import Slider from '@react-native-community/slider'
 import * as Haptics from 'expo-haptics'
+import { HomeTitleContext } from '../../contexts/HomeTitleContext'
 
 // 面数に応じたジオメトリを生成する関数
 const createGeometryForFaces = (faceCount) => {
-  switch (faceCount) {
-    case 4:
-      return new THREE.TetrahedronGeometry(2, 0)
-    case 6:
-      return new THREE.BoxGeometry(2, 2, 2)
-    case 8:
-      return new THREE.OctahedronGeometry(2, 0)
-    case 12:
-      return new THREE.DodecahedronGeometry(2, 0)
-    case 20:
-      return new THREE.IcosahedronGeometry(2, 0)
-    default:
-      // 正多面体以外の面数は球体で近似
-      // 面数に応じてセグメント数を計算
-      // SphereGeometryの面数 ≈ widthSegments * heightSegments * 2
-      const segments = Math.max(3, Math.ceil(Math.sqrt(faceCount / 2)))
-      return new THREE.SphereGeometry(2, segments, segments)
+  if (faceCount <= 4) {
+    return new THREE.TetrahedronGeometry(2, 0)
+  } else if (faceCount <= 6) {
+    return new THREE.BoxGeometry(2, 2, 2)
+  } else if (faceCount <= 8) {
+    return new THREE.OctahedronGeometry(2, 0)
+  } else if (faceCount <= 12) {
+    return new THREE.DodecahedronGeometry(2, 0)
+  } else if (faceCount <= 20) {
+    return new THREE.IcosahedronGeometry(2, 0)
+  } else {
+    // 20面以上は細分化
+    const detail = Math.floor((faceCount - 20) / 5)
+    return new THREE.IcosahedronGeometry(2, detail)
   }
 }
 
 export default function Home() {
   const [faces, setFaces] = useState(12)
+  const [autoRotate, setAutoRotate] = useState(false)
   const rendererRef = useRef()
   const sceneRef = useRef()
   const meshRef = useRef()
   const rotationRef = useRef({ x: 0, y: 0 })
   const lastTouchRef = useRef({ x: 0, y: 0 })
   const accumulatedRotationRef = useRef(0)
+  const autoRotateRef = useRef(autoRotate)
+  const { title, setTitle } = useContext(HomeTitleContext)
+
+  useEffect(() => {
+    setTitle(faces)
+  }, [faces])
+
+  // autoRotateの値をrefに同期
+  useEffect(() => {
+    autoRotateRef.current = autoRotate
+  }, [autoRotate])
 
   // スライダーの値変更ハンドラ
   const handleSliderChange = (value) => {
@@ -124,19 +134,27 @@ export default function Home() {
     const material = new THREE.MeshNormalMaterial({ flatShading: true })
     const mesh = new THREE.Mesh(geometry, material)
     scene.add(mesh)
-    
+
     // ライト
     const light = new THREE.AmbientLight(0xffffff, 0.5)
     scene.add(light)
-    
+
     // Refに保存
     rendererRef.current = renderer
     sceneRef.current = scene
     meshRef.current = mesh
     
-    // アニメーションループ（描画のみ）
+    // アニメーションループ
     const animate = () => {
       requestAnimationFrame(animate)
+
+      // 自動回転が有効な場合
+      if (autoRotateRef.current && meshRef.current) {
+        rotationRef.current.x += 0.005
+        rotationRef.current.y += 0.01
+        meshRef.current.rotation.x = rotationRef.current.x
+        meshRef.current.rotation.y = rotationRef.current.y
+      }
 
       renderer.render(scene, camera)
       gl.endFrameEXP()
@@ -163,12 +181,21 @@ export default function Home() {
             onContextCreate={onContextCreate}
           />
         </View>
-        
-        <View style={styles.faceCountContainer}>
-          <Text style={styles.faceCountText}>{faces} faces</Text>
-        </View>
+
+        <TouchableOpacity
+          style={styles.autoRotateButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+            setAutoRotate(!autoRotate)
+          }}
+        >
+          <Text style={styles.autoRotateButtonText}>
+            {autoRotate ? '自動回転: ON' : '自動回転: OFF'}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.sliderContainer}>
-          <Text style={styles.sliderLabel}>粗</Text>
+          <Text style={styles.sliderLabel}>少</Text>
           <Slider
             style={styles.slider}
             value={faces}
@@ -176,7 +203,7 @@ export default function Home() {
             minimumValue={4}
             maximumValue={30}
           />
-          <Text style={styles.sliderLabel}>細</Text>
+          <Text style={styles.sliderLabel}>多</Text>
         </View>
       </View>
     </ScreenTemplate>
@@ -216,9 +243,21 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   sliderLabel: {
-    fontSize: 14,
-    color: '#000',
+    fontSize: 18,
     minWidth: 25,
     textAlign: 'center',
+  },
+  autoRotateButton: {
+    alignSelf: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  autoRotateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 })
