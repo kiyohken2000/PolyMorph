@@ -37,11 +37,10 @@
     },
     "android": {
       "package": "net.votepurchase.polymorph",
-      "versionCode": 1,
+      "versionCode": 3,
       "userInterfaceStyle": "automatic",
       "permissions": [
         "VIBRATE",
-        "CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]

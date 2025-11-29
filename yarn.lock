@@ -3968,11 +3968,6 @@ expo-manifests@~1.0.9:
     "@expo/config" "~12.0.10"
     expo-json-utils "~0.15.0"
 
-expo-media-library@~18.2.0:
-  version "18.2.0"
-  resolved "https://registry.yarnpkg.com/expo-media-library/-/expo-media-library-18.2.0.tgz#b7515e25df5951e6b579b2ca1bee934ed206fa43"
-  integrity sha512-aIYLIqmU8LFWrQcfZdwg9f/iWm0wC8uhZ7HiUiTnrigtxf417cVvNokX9afXpIOKBHAHRjVIbcs1nN8KZDE2Fw==
-
 expo-modules-autolinking@3.0.22:
   version "3.0.22"
   resolved "https://registry.yarnpkg.com/expo-modules-autolinking/-/expo-modules-autolinking-3.0.22.tgz#aa8d1aa1059bb14c1de84990553b6ecfce988ea6"
