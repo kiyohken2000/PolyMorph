@@ -18,7 +18,8 @@
     "newArchEnabled": true,
     "updates": {
       "enabled": true,
-      "fallbackToCacheTimeout": 10000
+      "fallbackToCacheTimeout": 10000,
+      "url": "https://u.expo.dev/0fbdab5f-4d6b-4b79-9f6d-e95dd1de34c9"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -38,6 +39,8 @@
       "versionCode": 1,
       "userInterfaceStyle": "automatic",
       "permissions": [
+        "VIBRATE",
+        "CAMERA",
         "VIBRATE",
         "CAMERA"
       ]
