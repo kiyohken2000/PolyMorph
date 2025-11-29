@@ -25,7 +25,7 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "net.votepurchase.polymorph",
       "buildNumber": "1",
       "infoPlist": {
