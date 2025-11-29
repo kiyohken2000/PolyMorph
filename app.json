@@ -30,7 +30,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Use the photo library to change your avatar.",
-        "CFBundleDevelopmentRegion": "ja_JP"
+        "CFBundleDevelopmentRegion": "ja_JP",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "userInterfaceStyle": "automatic"
     },
@@ -40,7 +41,9 @@
       "userInterfaceStyle": "automatic",
       "permissions": [
         "VIBRATE",
-        "CAMERA"
+        "CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "packagerOpts": {
