@@ -18,7 +18,7 @@ export const HomeStacks = () => {
         component={Home}
         options={({ navigation }) => ({
           title: 'Home',
-          headerShown: false,
+          headerShown: true,
           headerBackTitleVisible: false,
           headerBackground: () => <GradientHeader />,
         })}
