@@ -23,4 +23,4 @@ eas device:create
 eas device:list
 
 プライバシーポリシー
-https://kiyohken2000.github.io/my-gpt/ja
+https://kiyohken2000.github.io/PolyMorph/ja
