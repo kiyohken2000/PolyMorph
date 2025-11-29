@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics'
 import { HomeTitleContext } from '../../contexts/HomeTitleContext'
 import BlurBox from '../../components/BlurBox/BlurBox'
 import { useAudioPlayer } from 'expo-audio'
+import { version } from '../../config'
 
 // 面数に応じたジオメトリを生成する関数
 const createGeometryForFaces = (faceCount) => {
@@ -284,6 +285,9 @@ export default function Home() {
               step={2}
             />
             <Text style={styles.sliderLabel}>多</Text>
+          </View>
+          <View>
+            <Text>ver: {version}</Text>
           </View>
         </View>
       </BlurBox>

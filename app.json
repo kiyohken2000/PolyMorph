@@ -40,8 +40,6 @@
       "userInterfaceStyle": "automatic",
       "permissions": [
         "VIBRATE",
-        "CAMERA",
-        "VIBRATE",
         "CAMERA"
       ]
     },
