@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react'
-import { StyleSheet, Text, View, PanResponder, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, PanResponder, TouchableOpacity, Animated } from 'react-native'
 import { colors, fontSize } from '../../theme'
 import ScreenTemplate from '../../components/ScreenTemplate'
 import { GLView } from 'expo-gl'
@@ -93,6 +93,7 @@ const createGeometryForFaces = (faceCount) => {
 export default function Home() {
   const [faces, setFaces] = useState(12)
   const [autoRotate, setAutoRotate] = useState(false)
+  const [confetti, setConfetti] = useState([])
   const rendererRef = useRef()
   const sceneRef = useRef()
   const meshRef = useRef()
@@ -100,6 +101,7 @@ export default function Home() {
   const lastTouchRef = useRef({ x: 0, y: 0 })
   const accumulatedRotationRef = useRef(0)
   const autoRotateRef = useRef(autoRotate)
+  const lastConfettiTimeRef = useRef(0)
   const { title, setTitle } = useContext(HomeTitleContext)
 
   // BGMプレイヤー
@@ -136,6 +138,85 @@ export default function Home() {
     }
   }
 
+  // 紙吹雪を作成する関数
+  const createConfetti = (x, y, count = 30) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2']
+    const newConfetti = []
+    const timestamp = Date.now()
+
+    for (let i = 0; i < count; i++) {
+      const id = `${timestamp}_${i}_${Math.random()}`
+      const color = colors[Math.floor(Math.random() * colors.length)]
+      const translateX = new Animated.Value(0)
+      const translateY = new Animated.Value(0)
+      const rotate = new Animated.Value(0)
+      const opacity = new Animated.Value(1)
+
+      // ランダムな方向と速度
+      const angle = (Math.random() * Math.PI * 2)
+      const velocity = 100 + Math.random() * 150
+      const vx = Math.cos(angle) * velocity
+      const vy = -Math.abs(Math.sin(angle)) * velocity - 100
+
+      newConfetti.push({
+        id,
+        x,
+        y,
+        color,
+        translateX,
+        translateY,
+        rotate,
+        opacity,
+        vx,
+        vy,
+      })
+
+      // アニメーション（期間を短縮）
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: vx,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(translateY, {
+            toValue: vy,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 500,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(rotate, {
+          toValue: (Math.random() - 0.5) * 720,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // アニメーション終了後、紙吹雪を削除
+        setConfetti(prev => prev.filter(c => c.id !== id))
+      })
+    }
+
+    setConfetti(prev => {
+      const MAX_CONFETTI = 100 // 最大100個まで
+      const updated = [...prev, ...newConfetti]
+      // 古いものから削除して最大数を保つ
+      if (updated.length > MAX_CONFETTI) {
+        return updated.slice(updated.length - MAX_CONFETTI)
+      }
+      return updated
+    })
+  }
+
   // タッチ操作用のPanResponder
   const panResponder = useRef(
     PanResponder.create({
@@ -145,10 +226,16 @@ export default function Home() {
         // タッチ開始時にハプティックフィードバック
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         accumulatedRotationRef.current = 0
+        lastConfettiTimeRef.current = Date.now()
         lastTouchRef.current = {
           x: evt.nativeEvent.pageX,
           y: evt.nativeEvent.pageY,
         }
+
+        // 触った瞬間に紙吹雪を出す
+        const x = evt.nativeEvent.locationX
+        const y = evt.nativeEvent.locationY
+        createConfetti(x, y, 30)
       },
       onPanResponderMove: (evt) => {
         const deltaX = evt.nativeEvent.pageX - lastTouchRef.current.x
@@ -169,6 +256,15 @@ export default function Home() {
         if (accumulatedRotationRef.current > 50) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
           accumulatedRotationRef.current = 0
+        }
+
+        // ドラッグ中も紙吹雪を出す（150msごとに、さらに少なめに）
+        const now = Date.now()
+        if (now - lastConfettiTimeRef.current > 150) {
+          const x = evt.nativeEvent.locationX
+          const y = evt.nativeEvent.locationY
+          createConfetti(x, y, 5) // ドラッグ中はかなり少なめに
+          lastConfettiTimeRef.current = now
         }
 
         lastTouchRef.current = {
@@ -254,12 +350,36 @@ export default function Home() {
     <ScreenTemplate>
       <BlurBox>
         <View style={styles.container}>
-          
+
           <View style={styles.canvasContainer} {...panResponder.panHandlers}>
             <GLView
               style={{ flex: 1 }}
               onContextCreate={onContextCreate}
             />
+
+            {/* 紙吹雪レイヤー */}
+            {confetti.map((c) => (
+              <Animated.View
+                key={c.id}
+                style={[
+                  styles.confettiPiece,
+                  {
+                    left: c.x,
+                    top: c.y,
+                    backgroundColor: c.color,
+                    transform: [
+                      { translateX: c.translateX },
+                      { translateY: c.translateY },
+                      { rotate: c.rotate.interpolate({
+                        inputRange: [0, 360],
+                        outputRange: ['0deg', '360deg'],
+                      })},
+                    ],
+                    opacity: c.opacity,
+                  },
+                ]}
+              />
+            ))}
           </View>
 
           <TouchableOpacity
@@ -347,5 +467,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  confettiPiece: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 2,
   },
 })
