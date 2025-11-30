@@ -19,7 +19,7 @@ export const HomeStacks = () => {
         name="Home"
         component={Home}
         options={({ navigation }) => ({
-          title: `${title}面`,
+          title: `${title} Morph`,
           headerShown: true,
           headerBackTitleVisible: false,
           headerBackground: () => <GradientHeader />,
