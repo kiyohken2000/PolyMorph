@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react'
-import { StyleSheet, Text, View, PanResponder, TouchableOpacity, Animated } from 'react-native'
+import { StyleSheet, Text, View, PanResponder, TouchableOpacity, Animated, Modal, FlatList } from 'react-native'
 import { colors, fontSize } from '../../theme'
 import ScreenTemplate from '../../components/ScreenTemplate'
 import { GLView } from 'expo-gl'
@@ -10,6 +10,15 @@ import { HomeTitleContext } from '../../contexts/HomeTitleContext'
 import BlurBox from '../../components/BlurBox/BlurBox'
 import { useAudioPlayer } from 'expo-audio'
 import { version } from '../../config'
+
+// BGMリスト
+const BGM_LIST = [
+  { id: 1, name: 'BGM 1', file: require('../../../assets/audio/bgm1.mp3') },
+  { id: 2, name: 'BGM 2', file: require('../../../assets/audio/bgm2.mp3') },
+  { id: 3, name: 'BGM 3', file: require('../../../assets/audio/bgm3.mp3') },
+  { id: 4, name: 'BGM 4', file: require('../../../assets/audio/bgm4.mp3') },
+  { id: 5, name: 'BGM 5', file: require('../../../assets/audio/bgm5.mp3') },
+]
 
 // 面数に応じたジオメトリを生成する関数
 const createGeometryForFaces = (faceCount) => {
@@ -94,6 +103,8 @@ export default function Home() {
   const [faces, setFaces] = useState(12)
   const [autoRotate, setAutoRotate] = useState(false)
   const [confetti, setConfetti] = useState([])
+  const [selectedBgmId, setSelectedBgmId] = useState(1)
+  const [showBgmModal, setShowBgmModal] = useState(false)
   const rendererRef = useRef()
   const sceneRef = useRef()
   const meshRef = useRef()
@@ -104,8 +115,24 @@ export default function Home() {
   const lastConfettiTimeRef = useRef(0)
   const { title, setTitle } = useContext(HomeTitleContext)
 
-  // BGMプレイヤー
-  const player = useAudioPlayer(require('../../../assets/audio/bgm1.mp3'))
+  // BGMプレイヤー（各BGMごとに作成）
+  const player1 = useAudioPlayer(BGM_LIST[0].file)
+  const player2 = useAudioPlayer(BGM_LIST[1].file)
+  const player3 = useAudioPlayer(BGM_LIST[2].file)
+  const player4 = useAudioPlayer(BGM_LIST[3].file)
+  const player5 = useAudioPlayer(BGM_LIST[4].file)
+
+  // 選択されたBGMのプレイヤーを取得
+  const getCurrentPlayer = () => {
+    switch (selectedBgmId) {
+      case 1: return player1
+      case 2: return player2
+      case 3: return player3
+      case 4: return player4
+      case 5: return player5
+      default: return player1
+    }
+  }
 
   useEffect(() => {
     setTitle(faces)
@@ -118,16 +145,26 @@ export default function Home() {
 
   // BGMの再生・停止を管理
   useEffect(() => {
+    const currentPlayer = getCurrentPlayer()
+    const allPlayers = [player1, player2, player3, player4, player5]
+
+    // すべてのプレイヤーを停止
+    allPlayers.forEach(p => {
+      if (p.playing) {
+        p.pause()
+      }
+    })
+
     if (autoRotate) {
-      // 自動回転ON: BGMを再生
-      player.loop = true
-      player.volume = 0.5
-      player.play()
+      // 自動回転ON: 選択されたBGMを再生
+      currentPlayer.loop = true
+      currentPlayer.volume = 0.5
+      currentPlayer.play()
     } else {
       // 自動回転OFF: BGMを停止
-      player.pause()
+      currentPlayer.pause()
     }
-  }, [autoRotate, player])
+  }, [autoRotate, selectedBgmId])
 
   // スライダーの値変更ハンドラ
   const handleSliderChange = (value) => {
@@ -136,6 +173,16 @@ export default function Home() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       setFaces(newFaces)
     }
+  }
+
+  // BGM選択ハンドラ
+  const handleBgmSelect = (bgmId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    setSelectedBgmId(bgmId)
+    setShowBgmModal(false)
+
+    // BGMを変更したら自動回転をOFF
+    setAutoRotate(false)
   }
 
   // 紙吹雪を作成する関数
@@ -382,17 +429,31 @@ export default function Home() {
             ))}
           </View>
 
-          <TouchableOpacity
-            style={styles.autoRotateButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-              setAutoRotate(!autoRotate)
-            }}
-          >
-            <Text style={styles.autoRotateButtonText}>
-              {autoRotate ? '自動回転: ON' : '自動回転: OFF'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.autoRotateButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                setAutoRotate(!autoRotate)
+              }}
+            >
+              <Text style={styles.autoRotateButtonText}>
+                {autoRotate ? '自動回転: ON' : '自動回転: OFF'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bgmButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                setShowBgmModal(true)
+              }}
+            >
+              <Text style={styles.bgmButtonText}>
+                BGM: {BGM_LIST.find(bgm => bgm.id === selectedBgmId)?.name || 'BGM 1'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.sliderContainer}>
             <Text style={styles.sliderLabel}>少</Text>
@@ -411,6 +472,53 @@ export default function Home() {
           </View>
         </View>
       </BlurBox>
+
+      {/* BGM選択モーダル */}
+      <Modal
+        visible={showBgmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowBgmModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowBgmModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>BGMを選択</Text>
+            <FlatList
+              data={BGM_LIST}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.bgmItem,
+                    selectedBgmId === item.id && styles.bgmItemSelected
+                  ]}
+                  onPress={() => handleBgmSelect(item.id)}
+                >
+                  <Text style={[
+                    styles.bgmItemText,
+                    selectedBgmId === item.id && styles.bgmItemTextSelected
+                  ]}>
+                    {item.name}
+                  </Text>
+                  {selectedBgmId === item.id && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowBgmModal(false)}
+            >
+              <Text style={styles.closeButtonText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScreenTemplate>
   )
 }
@@ -455,15 +563,31 @@ const styles = StyleSheet.create({
     minWidth: 25,
     textAlign: 'center',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
   autoRotateButton: {
-    alignSelf: 'center',
     backgroundColor: '#007AFF',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    marginBottom: 20,
   },
   autoRotateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bgmButton: {
+    backgroundColor: '#34C759',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  bgmButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -473,5 +597,61 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  bgmItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginVertical: 5,
+    backgroundColor: '#f5f5f5',
+  },
+  bgmItemSelected: {
+    backgroundColor: '#007AFF',
+  },
+  bgmItemText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  bgmItemTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  checkmark: {
+    fontSize: 20,
+    color: '#fff',
+  },
+  closeButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 15,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 })
