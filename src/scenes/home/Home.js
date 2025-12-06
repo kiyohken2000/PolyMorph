@@ -129,6 +129,7 @@ export default function Home() {
   const [selectedBgmId, setSelectedBgmId] = useState(1)
   const [showBgmModal, setShowBgmModal] = useState(false)
   const [isPebble, setIsPebble] = useState(false)
+  const [inertiaEnabled, setInertiaEnabled] = useState(true)
   const rendererRef = useRef()
   const sceneRef = useRef()
   const meshRef = useRef()
@@ -137,6 +138,9 @@ export default function Home() {
   const accumulatedRotationRef = useRef(0)
   const autoRotateRef = useRef(autoRotate)
   const lastConfettiTimeRef = useRef(0)
+  const velocityRef = useRef({ x: 0, y: 0 })
+  const lastMoveTimeRef = useRef(0)
+  const inertiaEnabledRef = useRef(inertiaEnabled)
   const { title, setTitle } = useContext(HomeTitleContext)
 
   // BGMプレイヤー（各BGMごとに作成）
@@ -166,6 +170,11 @@ export default function Home() {
   useEffect(() => {
     autoRotateRef.current = autoRotate
   }, [autoRotate])
+
+  // inertiaEnabledの値をrefに同期
+  useEffect(() => {
+    inertiaEnabledRef.current = inertiaEnabled
+  }, [inertiaEnabled])
 
   // BGMの再生・停止を管理
   useEffect(() => {
@@ -298,6 +307,8 @@ export default function Home() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         accumulatedRotationRef.current = 0
         lastConfettiTimeRef.current = Date.now()
+        lastMoveTimeRef.current = Date.now()
+        velocityRef.current = { x: 0, y: 0 }
         lastTouchRef.current = {
           x: evt.nativeEvent.pageX,
           y: evt.nativeEvent.pageY,
@@ -309,6 +320,8 @@ export default function Home() {
         createConfetti(x, y, 30)
       },
       onPanResponderMove: (evt) => {
+        const now = Date.now()
+        const deltaTime = now - lastMoveTimeRef.current
         const deltaX = evt.nativeEvent.pageX - lastTouchRef.current.x
         const deltaY = evt.nativeEvent.pageY - lastTouchRef.current.y
 
@@ -316,6 +329,12 @@ export default function Home() {
 
         rotationRef.current.y += deltaX * 0.01
         rotationRef.current.x += deltaY * 0.01
+
+        // 速度を計算（時間あたりの回転量）
+        if (deltaTime > 0) {
+          velocityRef.current.x = (deltaY * 0.01) / deltaTime * 16
+          velocityRef.current.y = (deltaX * 0.01) / deltaTime * 16
+        }
 
         if (meshRef.current) {
           meshRef.current.rotation.x = rotationRef.current.x
@@ -330,7 +349,6 @@ export default function Home() {
         }
 
         // ドラッグ中も紙吹雪を出す（150msごとに、さらに少なめに）
-        const now = Date.now()
         if (now - lastConfettiTimeRef.current > 150) {
           const x = evt.nativeEvent.locationX
           const y = evt.nativeEvent.locationY
@@ -342,6 +360,10 @@ export default function Home() {
           x: evt.nativeEvent.pageX,
           y: evt.nativeEvent.pageY,
         }
+        lastMoveTimeRef.current = now
+      },
+      onPanResponderRelease: () => {
+        // ドラッグ終了時、慣性回転が開始される（アニメーションループで処理）
       },
     })
   ).current
@@ -400,6 +422,26 @@ export default function Home() {
         rotationRef.current.y += 0.01
         meshRef.current.rotation.x = rotationRef.current.x
         meshRef.current.rotation.y = rotationRef.current.y
+      } else if (meshRef.current && inertiaEnabledRef.current) {
+        // 慣性回転を適用（慣性が有効な場合のみ）
+        const vx = velocityRef.current.x
+        const vy = velocityRef.current.y
+        const speed = Math.sqrt(vx * vx + vy * vy)
+
+        if (speed > 0.001) {
+          rotationRef.current.x += vx
+          rotationRef.current.y += vy
+          meshRef.current.rotation.x = rotationRef.current.x
+          meshRef.current.rotation.y = rotationRef.current.y
+
+          // 速度を減衰（摩擦係数 0.95）
+          velocityRef.current.x *= 0.95
+          velocityRef.current.y *= 0.95
+        } else {
+          // 速度が十分小さくなったら停止
+          velocityRef.current.x = 0
+          velocityRef.current.y = 0
+        }
       }
 
       renderer.render(scene, camera)
@@ -490,6 +532,18 @@ export default function Home() {
               >
                 <Text style={styles.pebbleButtonText}>
                   {isPebble ? 'ペブル: ON' : 'ペブル: OFF'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.inertiaButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  setInertiaEnabled(!inertiaEnabled)
+                }}
+              >
+                <Text style={styles.inertiaButtonText}>
+                  {inertiaEnabled ? '慣性: ON' : '慣性: OFF'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -649,6 +703,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pebbleButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  inertiaButton: {
+    backgroundColor: '#AF52DE',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  inertiaButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

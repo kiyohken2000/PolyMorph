@@ -7,7 +7,7 @@
       "ios",
       "android"
     ],
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/logo-sm.png",
     "splash": {
@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "net.votepurchase.polymorph",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Use the photo library to change your avatar.",
         "CFBundleDevelopmentRegion": "ja_JP",
@@ -37,7 +37,7 @@
     },
     "android": {
       "package": "net.votepurchase.polymorph",
-      "versionCode": 5,
+      "versionCode": 6,
       "userInterfaceStyle": "automatic",
       "permissions": [
         "VIBRATE",
