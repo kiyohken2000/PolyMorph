@@ -4,6 +4,7 @@ import { colors, fontSize } from '../../theme'
 import ScreenTemplate from '../../components/ScreenTemplate'
 import { GLView } from 'expo-gl'
 import * as THREE from 'three'
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry'
 import Slider from '@react-native-community/slider'
 import * as Haptics from 'expo-haptics'
 import { HomeTitleContext } from '../../contexts/HomeTitleContext'
@@ -21,7 +22,7 @@ const BGM_LIST = [
 ]
 
 // 面数に応じたジオメトリを生成する関数
-const createGeometryForFaces = (faceCount) => {
+const createGeometryForFaces = (faceCount, isPebble) => {
   // 正多面体が存在する面数
   if (faceCount === 4) {
     return new THREE.TetrahedronGeometry(2, 0)
@@ -33,6 +34,28 @@ const createGeometryForFaces = (faceCount) => {
     return new THREE.DodecahedronGeometry(2, 0)
   } else if (faceCount === 20) {
     return new THREE.IcosahedronGeometry(2, 0)
+  }
+
+  if(isPebble) {
+    // 球状に点をランダム配置
+    const points = [];
+    for (let i = 0; i < faceCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 2;
+
+      points.push(
+        new THREE.Vector3(
+          r * Math.sin(phi) * Math.cos(theta),
+          r * Math.sin(phi) * Math.sin(theta),
+          r * Math.cos(phi)
+        )
+      );
+    }
+
+    // 凸包＝点をつないだ多面体
+    const geometry = new ConvexGeometry(points);
+    return geometry
   }
 
   // 正多面体以外の面数は球体で近似
@@ -105,6 +128,7 @@ export default function Home() {
   const [confetti, setConfetti] = useState([])
   const [selectedBgmId, setSelectedBgmId] = useState(1)
   const [showBgmModal, setShowBgmModal] = useState(false)
+  const [isPebble, setIsPebble] = useState(false)
   const rendererRef = useRef()
   const sceneRef = useRef()
   const meshRef = useRef()
@@ -352,7 +376,7 @@ export default function Home() {
     camera.position.z = 3.5
     
     // 初期ジオメトリ（12面体）
-    const geometry = createGeometryForFaces(12)
+    const geometry = createGeometryForFaces(12, isPebble)
     const material = new THREE.MeshNormalMaterial({ flatShading: true })
     const mesh = new THREE.Mesh(geometry, material)
     scene.add(mesh)
@@ -387,11 +411,11 @@ export default function Home() {
   // 面数が変わったらジオメトリを更新
   useEffect(() => {
     if (meshRef.current) {
-      const newGeometry = createGeometryForFaces(faces)
+      const newGeometry = createGeometryForFaces(faces, isPebble)
       meshRef.current.geometry.dispose()
       meshRef.current.geometry = newGeometry
     }
-  }, [faces])
+  }, [faces, isPebble])
   
   return (
     <ScreenTemplate>
@@ -429,30 +453,46 @@ export default function Home() {
             ))}
           </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.autoRotateButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                setAutoRotate(!autoRotate)
-              }}
-            >
-              <Text style={styles.autoRotateButtonText}>
-                {autoRotate ? '自動回転: ON' : '自動回転: OFF'}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.buttonGroup}>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.autoRotateButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  setAutoRotate(!autoRotate)
+                }}
+              >
+                <Text style={styles.autoRotateButtonText}>
+                  {autoRotate ? '自動回転: ON' : '自動回転: OFF'}
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.bgmButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                setShowBgmModal(true)
-              }}
-            >
-              <Text style={styles.bgmButtonText}>
-                BGM: {BGM_LIST.find(bgm => bgm.id === selectedBgmId)?.name || 'BGM 1'}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.bgmButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  setShowBgmModal(true)
+                }}
+              >
+                <Text style={styles.bgmButtonText}>
+                  BGM: {BGM_LIST.find(bgm => bgm.id === selectedBgmId)?.name || 'BGM 1'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.pebbleButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  setIsPebble(!isPebble)
+                }}
+              >
+                <Text style={styles.pebbleButtonText}>
+                  {isPebble ? 'ペブル: ON' : 'ペブル: OFF'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.sliderContainer}>
@@ -563,18 +603,24 @@ const styles = StyleSheet.create({
     minWidth: 25,
     textAlign: 'center',
   },
-  buttonContainer: {
+  buttonGroup: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  buttonRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   autoRotateButton: {
     backgroundColor: '#007AFF',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    minWidth: 150,
+    alignItems: 'center',
   },
   autoRotateButtonText: {
     color: '#fff',
@@ -586,8 +632,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    minWidth: 150,
+    alignItems: 'center',
   },
   bgmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pebbleButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  pebbleButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
